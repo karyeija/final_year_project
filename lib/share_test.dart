@@ -182,6 +182,10 @@ class _ReportPageState extends State<ReportPage> {
     pdf.addPage(pw.Page(
       build: (pw.Context context) => pw.Center(
           child: pw.Column(children: [
+        pw.Text('A brief field report',
+            style: pw.TextStyle(
+              fontSize: 24,
+            )),
         pw.SizedBox(
           // height: 5,
           child: pw.Text(

@@ -21,6 +21,8 @@ class MyApp extends StatelessWidget {
       home: const GeoLocation(),
     );
   }
+
+  static of(BuildContext context) {}
 }
 
 class GeoLocation extends StatefulWidget {

@@ -19,6 +19,7 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
+  bool _isDarkMode = false;
   // Default and current points
   final List<List<double>> defaultPoints = [
     [100, 85],
@@ -32,6 +33,7 @@ class HomeState extends State<Home> {
   //   [328, 897],
   //   [100, 85],
   // ];
+
   late List<List<double>> pts;
   // Dividers for spacing
   final SizedBox vDivider = const SizedBox(width: 2);
@@ -400,6 +402,42 @@ class HomeState extends State<Home> {
     return Scaffold(
       backgroundColor: Colors.white70,
       persistentFooterButtons: [userButtons],
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text('Settings'),
+            ),
+            ListTile(
+              title: Text('Dark Mode'),
+              trailing: Switch(
+                value: _isDarkMode,
+                onChanged: (value) {
+                  setState(() {
+                    _isDarkMode = value;
+                    if (_isDarkMode) {
+                      MyApp.of(context).setTheme(ThemeMode.dark);
+                    } else {
+                      MyApp.of(context).setTheme(ThemeMode.light);
+                    }
+                  });
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('User Guide'),
+              leading: Icon(Icons.help_outline),
+              onTap: () {
+                _showUserGuide(context);
+              },
+            ),
+          ],
+        ),
+      ),
       appBar: AppBar(
         // leading: IconButton(
         // color: Colors.white,
@@ -538,7 +576,7 @@ class HomeState extends State<Home> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('STN1'),
+              const Text('STN A'),
               SizedBox(
                 width: pageWidth * 0.01,
               ),
@@ -550,15 +588,11 @@ class HomeState extends State<Home> {
                 'E₁',
                 'N₁',
               ),
-              SizedBox(
-                width: pageWidth * 0.01,
-              ),
-              buildLegendItem(Colors.red, ""),
             ],
           ),
           Row(
             children: [
-              const Text('STN2'),
+              const Text('STN B'),
               SizedBox(
                 width: pageWidth * 0.01,
               ),
@@ -570,15 +604,14 @@ class HomeState extends State<Home> {
                 'E₂',
                 'N₂',
               ),
-              SizedBox(
-                width: pageWidth * 0.01,
-              ),
-              buildLegendItem(Colors.green, ""),
             ],
           ),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('STN3'),
+              const Text(
+                'STN C',
+              ),
               SizedBox(
                 width: pageWidth * 0.01,
               ),
@@ -590,10 +623,6 @@ class HomeState extends State<Home> {
                 'E₃',
                 'N₃',
               ),
-              SizedBox(
-                width: pageWidth * 0.01,
-              ),
-              buildLegendItem(Colors.blue, ""),
             ],
           ),
         ],
@@ -649,7 +678,7 @@ class HomeState extends State<Home> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: pageWidth * 0.08,
+            width: pageWidth * 0.1,
           ),
           buildCoordinateRow(
             x4Control,
@@ -660,10 +689,6 @@ class HomeState extends State<Home> {
             'User E',
             'User N',
           ),
-          SizedBox(
-            width: pageWidth * 0.01,
-          ),
-          buildLegendItem(Colors.yellow, ""),
         ],
       ),
     );
@@ -676,17 +701,67 @@ class HomeState extends State<Home> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          TextButton(
-            style: const ButtonStyle(),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue, // Set the background color
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Set the border radius
+              ),
+            ),
             onPressed: submitButtonClicked,
-            child: const Text('Submit'),
+            child: const Text(
+              'Submit',
+              style: TextStyle(fontSize: 26),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue, // Set the background color
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8), // Set the border radius
+              ),
+            ),
             onPressed: refreshButtonClicked,
-            child: const Text('Refresh'),
-          ),
+            child: const Text(
+              'Refresh',
+              style: TextStyle(fontSize: 26),
+            ),
+          )
         ],
       ),
     );
   }
+}
+
+// Show User Guide
+void _showUserGuide(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('User Guide'),
+        content: SingleChildScrollView(
+          child: ListBody(
+            children: <Widget>[
+              Image.asset('assets/user_guide_image.png'),
+              const SizedBox(height: 10),
+              const Text(
+                '1. Toggle theme using the switch in the drawer.\n'
+                '2. Use this app for resection calculations and more.\n'
+                '3. Contact support for any issues.',
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Close'),
+          ),
+        ],
+      );
+    },
+  );
 }

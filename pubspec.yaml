@@ -53,6 +53,7 @@ dependencies:
   syncfusion_flutter_charts: ^27.2.5
   permission_handler: ^11.3.1
   connectivity_plus: ^6.1.0
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:

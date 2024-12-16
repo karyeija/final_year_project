@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, rootBundle;
 import 'package:csv/csv.dart';
+import 'dart:async';
 
 // Class to load CSV data from assets
 class CsvDataLoader {
@@ -45,6 +46,7 @@ class _CsvTableScreenState extends State<CsvTableScreen> {
   List<Map<String, dynamic>> filteredData = [];
   String filterText = '';
   double? inputElevation;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -64,14 +66,17 @@ class _CsvTableScreenState extends State<CsvTableScreen> {
   }
 
   void _filterData(String filter) {
-    setState(() {
-      filterText = filter;
-      filteredData = csvData.where((row) {
-        return row['NAME']
-            .toString()
-            .toLowerCase()
-            .contains(filter.toLowerCase());
-      }).toList();
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        filterText = filter;
+        filteredData = csvData.where((row) {
+          return row['NAME']
+              .toString()
+              .toLowerCase()
+              .contains(filter.toLowerCase());
+        }).toList();
+      });
     });
   }
 
