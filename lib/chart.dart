@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'dart:math';
 import 'geometry.dart';
@@ -87,16 +88,44 @@ class SyncfusionLineChart extends StatelessWidget {
     return Scaffold(
       body: SfCartesianChart(
         backgroundColor: Colors.black,
-        title: ChartTitle(text: 'Chart Visualization'),
+        title: ChartTitle(
+          text: 'Geometric Visualization',
+          textStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 18, // Adjust the font size
+            fontWeight: FontWeight.bold, // Set a bold font weight
+            fontStyle: FontStyle.italic, // Make the font italic
+            letterSpacing: 1.5, // Add some letter spacing for a clean look
+            shadows: <Shadow>[
+              Shadow(
+                color:
+                    Colors.yellow.withOpacity(0.4), // Add shadow to the title
+                offset: Offset(5, 4), // Set the shadow offset
+                blurRadius: 5, // Set the blur radius for the shadow
+              ),
+            ],
+          ),
+          alignment: ChartAlignment.center, // Center the title
+        ),
         primaryXAxis: NumericAxis(
           title: AxisTitle(
               text: 'Easting', textStyle: TextStyle(color: Colors.white)),
+          labelStyle: TextStyle(color: Colors.white),
+          // Hide the numeric labels
+          numberFormat: NumberFormat('###0'),
+          // isVisible: false,
           minimum: adjustedMinX,
           maximum: adjustedMaxX,
         ),
         primaryYAxis: NumericAxis(
           title: AxisTitle(
               text: 'Northing', textStyle: TextStyle(color: Colors.white)),
+          labelStyle: TextStyle(color: Colors.white), // Hide the numeric labels
+          isVisible: true,
+          labelRotation: 300,
+          numberFormat: NumberFormat('###0'),
+          // isInversed: true,
+
           minimum: adjustedMinY,
           maximum: adjustedMaxY,
         ),
