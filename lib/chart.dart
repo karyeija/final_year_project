@@ -111,21 +111,16 @@ class SyncfusionLineChart extends StatelessWidget {
           title: AxisTitle(
               text: 'Easting', textStyle: TextStyle(color: Colors.white)),
           labelStyle: TextStyle(color: Colors.white),
-          // Hide the numeric labels
           numberFormat: NumberFormat('###0'),
-          // isVisible: false,
           minimum: adjustedMinX,
           maximum: adjustedMaxX,
         ),
         primaryYAxis: NumericAxis(
           title: AxisTitle(
               text: 'Northing', textStyle: TextStyle(color: Colors.white)),
-          labelStyle: TextStyle(color: Colors.white), // Hide the numeric labels
-          isVisible: true,
+          labelStyle: TextStyle(color: Colors.white),
           labelRotation: 300,
           numberFormat: NumberFormat('###0'),
-          // isInversed: true,
-
           minimum: adjustedMinY,
           maximum: adjustedMaxY,
         ),
@@ -137,24 +132,27 @@ class SyncfusionLineChart extends StatelessWidget {
             yValueMapper: (_ChartData data, _) => data.y,
             color: Colors.pink,
             width: 2,
+            name: 'Circle (A to P)',
           ),
-          // Add the following LineSeries to your existing `series` list:
+          // Line from A to P
           LineSeries<_ChartData, double>(
             dataSource: aToPLine,
             xValueMapper: (_ChartData data, _) => data.x,
             yValueMapper: (_ChartData data, _) => data.y,
             color: Colors.white,
             width: 2,
+            name: 'Line A to P',
           ),
-// Add the following LineSeries to your existing `series` list:
+          // Line from P to B
           LineSeries<_ChartData, double>(
             dataSource: pToBLine,
             xValueMapper: (_ChartData data, _) => data.x,
             yValueMapper: (_ChartData data, _) => data.y,
             color: Colors.white,
             width: 2,
+            name: 'Line P to B',
           ),
-          // Main points
+          // Main points (Scatter points)
           ScatterSeries<_ChartData, double>(
             dataSource: mainPoints,
             xValueMapper: (_ChartData data, _) => data.x,
@@ -184,7 +182,7 @@ class SyncfusionLineChart extends StatelessWidget {
               },
             ),
           ),
-          // Connecting lines
+          // Connecting lines (between all points)
           LineSeries<_ChartData, double>(
             dataSource: mainPoints,
             xValueMapper: (_ChartData data, _) => data.x,
@@ -193,6 +191,17 @@ class SyncfusionLineChart extends StatelessWidget {
             width: 2,
           ),
         ],
+        // legend: Legend(
+        //   isVisible: true,
+        //   position: LegendPosition.bottom,
+        //   backgroundColor: Colors.black.withOpacity(0.5),
+        //   textStyle: TextStyle(color: Colors.white),
+        // ),
+        zoomPanBehavior: ZoomPanBehavior(
+          enablePinching: true,
+          enablePanning: true,
+          zoomMode: ZoomMode.xy,
+        ),
       ),
     );
   }

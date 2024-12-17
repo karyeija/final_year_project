@@ -7,6 +7,27 @@ import 'dart:typed_data';
 import 'package:test/geometry.dart';
 // import 'dart:io';
 
+/// A reusable widget for creating a SizedBox containing styled text.
+Widget reusableTextSizedBox({
+  required String text,
+  double height = 5,
+  double fontSize = 20,
+  FontWeight fontWeight = FontWeight.bold,
+  Color textColor = Colors.black,
+}) {
+  return SizedBox(
+    height: height,
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: textColor,
+      ),
+    ),
+  );
+}
+
 // ignore: must_be_immutable
 class ReportPage extends StatefulWidget {
   String distAB,
@@ -46,6 +67,27 @@ class ReportPage extends StatefulWidget {
 }
 
 class _ReportPageState extends State<ReportPage> {
+  /// A reusable widget for creating a SizedBox containing styled text.
+  Widget reusableTextSizedBox({
+    required String text,
+    double height = 5,
+    double fontSize = 20,
+    FontWeight fontWeight = FontWeight.bold,
+    Color textColor = Colors.black,
+  }) {
+    return SizedBox(
+      height: height,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: fontWeight,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
   /* ...........................................................
   ........................................................
   .......................................................... */
@@ -89,7 +131,7 @@ class _ReportPageState extends State<ReportPage> {
   get angleBPC => RichText(
           text: TextSpan(children: [
         TextSpan(
-            text: 'Angle BPC: ',
+            text: 'Angle BPC(\u03b2): ',
             style: TextStyle(fontSize: 20, color: Colors.black)),
         TextSpan(
           text: widget.angleBPC,
@@ -206,7 +248,8 @@ class _ReportPageState extends State<ReportPage> {
                   pw.RichText(
                       text: pw.TextSpan(children: [
                     pw.TextSpan(
-                        text: 'Angle PAB: ', style: pw.TextStyle(fontSize: 20)),
+                        text: 'Angle PAB : ',
+                        style: pw.TextStyle(fontSize: 20)),
                     pw.TextSpan(
                         text: widget.anglePAB,
                         style: pw.TextStyle(

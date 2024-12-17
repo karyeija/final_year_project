@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:test/chart.dart';
 import 'package:test/geolocation.dart';
 import 'package:test/geometry.dart';
-import 'package:test/share_test.dart';
+import 'package:test/report.dart';
 import 'package:test/table.dart';
 
 // import 'package:plot/webview_page.dart';
@@ -25,14 +25,8 @@ class HomeState extends State<Home> {
     [100, 85],
     [328, 897],
     [1000, 1220],
-    [1267, 200]
+    [2000, 140]
   ];
-  // final List<List<double>> defaultPoints = [
-  //   [1267, 200],
-  //   [1000, 1220],
-  //   [328, 897],
-  //   [100, 85],
-  // ];
 
   late List<List<double>> pts;
   // Dividers for spacing
@@ -259,84 +253,60 @@ class HomeState extends State<Home> {
     super.dispose();
   }
 
-  // Handle the submit button click
   void submitButtonClicked() {
     setState(() {
       bool allValid = true;
       List<List<double>> tempPoints = [];
 
-      // Validate each pair of x and y inputs
       for (int i = 0; i < textfields.length; i += 2) {
         String xValue = textfields[i].text;
         String yValue = textfields[i + 1].text;
 
-        // Check if inputs are valid numbers
-        if (xValue.isEmpty ||
-            yValue.isEmpty ||
-            double.tryParse(xValue) == null ||
-            double.tryParse(yValue) == null) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('All fields must be filled with valid numbers'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ));
+        double? x = double.tryParse(xValue);
+        double? y = double.tryParse(yValue);
+
+        if (x == null || y == null) {
+          showErrorSnackBar('All fields must be filled with valid numbers');
           allValid = false;
-          break; // Exit the loop if validation fails
+          break;
         } else {
-          tempPoints.add([double.parse(xValue), double.parse(yValue)]);
+          tempPoints.add([x, y]);
         }
       }
 
-      // Proceed only if all inputs are valid
-      if (allValid) {
-        // Check for repeated values and collinearity
-        bool threeRepeatedEasting =
-            columnDuplicates(tempPoints, 0, 3); // any three repeated eastings
-        bool threeRepeatedNorthing =
-            columnDuplicates(tempPoints, 1, 3); // any three repeated northings
-        bool duplicatedRows = duplicateRows(tempPoints); // repeated points
-        bool xEqualstoY = isXequaltoY(
-            tempPoints); // curb for x=y as this may lead to infinity
-        bool orderlyEasting = isColumnOrdered(
-            tempPoints, 0); //check if points are entered in an orderly manner
-
-        if (threeRepeatedEasting || threeRepeatedNorthing) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Collinear'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ));
-        } else if (duplicatedRows) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Repeated points'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ));
-        } else if (xEqualstoY) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: RichText(
-                text: const TextSpan(children: [
-              TextSpan(text: 'Check where x=y ', style: TextStyle(fontSize: 20))
-            ])),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ));
-        } else if (!orderlyEasting) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: RichText(
-                text: const TextSpan(children: [
-              TextSpan(
-                  text: 'jumbled stations ', style: TextStyle(fontSize: 20))
-            ])),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ));
-        } else {
-          pts.clear();
-          pts = tempPoints; // Assign the validated points
-        }
+      if (allValid && validateInputs(tempPoints)) {
+        pts.clear();
+        pts = tempPoints;
       }
     });
+  }
+
+  void showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message, style: const TextStyle(fontSize: 18)),
+      backgroundColor: Colors.red,
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  bool validateInputs(List<List<double>> points) {
+    if (columnDuplicates(points, 0, 3) || columnDuplicates(points, 1, 3)) {
+      showErrorSnackBar('Collinear');
+      return false;
+    }
+    if (duplicateRows(points)) {
+      showErrorSnackBar('Repeated points');
+      return false;
+    }
+    if (isXequaltoY(points)) {
+      showErrorSnackBar('Check where x=y');
+      return false;
+    }
+    if (!isColumnOrdered(points, 0)) {
+      showErrorSnackBar('Jumbled stations');
+      return false;
+    }
+    return true;
   }
 
   // Handle the refresh button click
@@ -366,7 +336,6 @@ class HomeState extends State<Home> {
     Widget plot = Row(
       children: [
         buildChartContainer(chartWidth, chartHeight),
-        // buildLegendContainer(chartHeight),
       ],
     );
 
@@ -548,26 +517,6 @@ class HomeState extends State<Home> {
     ));
   }
 
-  // Helper method to build legend items
-  Widget buildLegendItem(Color color, String label) {
-    return Row(
-      children: [
-        CircleAvatar(
-          backgroundColor: color,
-          radius: 8,
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10.0,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
   // Method to build control stations input
   Widget buildControlStations(double controlsHeight, double pageWidth) {
     return SizedBox(
@@ -733,7 +682,6 @@ class HomeState extends State<Home> {
   }
 }
 
-// Show User Guide
 void _showUserGuide(BuildContext context) {
   showDialog(
     context: context,
@@ -741,15 +689,73 @@ void _showUserGuide(BuildContext context) {
       return AlertDialog(
         title: const Text('User Guide'),
         content: SingleChildScrollView(
-          child: ListBody(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Image.asset('assets/user_guide_image.png'),
               const SizedBox(height: 10),
               const Text(
-                '1. Toggle theme using the switch in the drawer.\n'
-                '2. Use this app for resection calculations and more.\n'
-                '3. Contact support for any issues.',
+                '1. Launch the App:',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              const Text('Open the app on your device.\n'),
+              const Text(
+                '2. Home Screen:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const Text('You will be presented with the home screen.\n'),
+              const Text(
+                '3. Control Stations:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                  children: [
+                    const TextSpan(
+                      text:
+                          'Type in the coordinates (Easting and Northing) of the control stations in the designated "Controls Section." You can also select stations by clicking the ',
+                    ),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Icon(Icons.table_chart, size: 18),
+                    ),
+                    const TextSpan(text: ' icon in the home screen.\n'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '4. User Location:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.black, fontSize: 16),
+                  children: [
+                    const TextSpan(
+                      text:
+                          'If you don\'t have the user\'s location data, click on the ',
+                    ),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Icon(Icons.my_location, size: 18),
+                    ),
+                    const TextSpan(
+                      text:
+                          ' icon to pick a location. Copy and paste it into the "User Location" section.\n',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '5. Additional Steps:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const Text(
+                  'Reset: To reset the app and clear all input fields, click the "Refresh" button.\n'
+                  'View Report: To see a brief report of the calculations, click the "Print" button.\n'
+                  'Submit: To initiate the calculations and display the results, click the "Submit" button.'),
             ],
           ),
         ),

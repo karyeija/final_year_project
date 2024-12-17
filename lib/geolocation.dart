@@ -1,4 +1,3 @@
-// import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
@@ -14,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GeoLocation and UTM Conversion ',
+      title: 'GeoLocation and UTM Conversion',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -39,26 +38,22 @@ class _GeoLocationState extends State<GeoLocation> {
   final TextEditingController _utmEastingController = TextEditingController();
   final TextEditingController _zoneController = TextEditingController();
   final TextEditingController _altitudeController = TextEditingController();
+  final TextEditingController _accuracyController = TextEditingController();
+
   Map<String, dynamic>? utmResult;
   bool isLoading = false;
+  bool _hasGpsFix = false;
+  String _gpsStatus = 'Waiting for GPS fix...';
 
   Future<void> convertToUtm() async {
     double? latitude = double.tryParse(_latController.text);
     double? longitude = double.tryParse(_longController.text);
-    // double? altitude = double.tryParse(_altitudeController.text);
-
-    // _altitudeController.text = getElevation() as String;
-    // _altitudeController.text = (await getElevation())?.toString() ?? '0.0';
 
     if (latitude != null && longitude != null) {
       utmResult = convertLatLngToUtm(latitude, longitude, 3);
-// 7.92069999999876
-//  160.070500000007
       _utmNorthingController.text = (utmResult!['northing']).toString();
-
       _utmEastingController.text = (utmResult!['easting']).toString();
       _zoneController.text = utmResult!['zone'].toString();
-
       setState(() {});
     } else {
       utmResult = null;
@@ -66,55 +61,97 @@ class _GeoLocationState extends State<GeoLocation> {
     }
   }
 
-  _showSnackBar(String message, Color color) {
+  void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            Icon(
+              color == Colors.green ? Icons.check_circle : Icons.error,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
         backgroundColor: color,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
 
-  _getCurrentLocation() async {
+  Future<void> _getCurrentLocation() async {
     setState(() {
       isLoading = true;
+      _gpsStatus = 'Waiting for GPS fix...';
+      _hasGpsFix = false;
     });
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        _showSnackBar('Location services are disabled.', Colors.red);
+        _gpsStatus = 'Location services are disabled.';
+        _showSnackBar(_gpsStatus, Colors.red);
         return;
       }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          _showSnackBar('Location permissions are denied', Colors.red);
+          _gpsStatus = 'Location permissions are denied.';
+          _showSnackBar(_gpsStatus, Colors.red);
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        _showSnackBar(
-            'Location permissions are permanently denied, we cannot request permissions.',
-            Colors.red);
+        _gpsStatus =
+            'Location permissions are permanently denied. Unable to proceed.';
+        _showSnackBar(_gpsStatus, Colors.red);
         return;
       }
 
       Position position = await Geolocator.getCurrentPosition(
-          locationSettings: LocationSettings(accuracy: LocationAccuracy.best));
+          locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.best,
+              timeLimit: Duration(seconds: 10)));
 
       _latController.text = '${position.latitude}';
       _longController.text = '${position.longitude}';
       _altitudeController.text =
           (position.altitude + 12.6400000000001).toStringAsFixed(0);
+      _accuracyController.text = '${position.accuracy.toStringAsFixed(2)} m';
 
       convertToUtm();
+      setState(() {
+        // Update the accuracy controller with the new position accuracy
+        _accuracyController.text = '${position.accuracy.toStringAsFixed(2)} m';
+
+        // Parse the updated accuracy for further processing
+        final accuracy = double.tryParse(position.accuracy.toStringAsFixed(2));
+
+        if (accuracy != null) {
+          if (accuracy < 5) {
+            _gpsStatus =
+                'GPS Fix acquired! at ${_accuracyController.text} good';
+          } else {
+            _gpsStatus =
+                'GPS Fix acquired! at ${_accuracyController.text}, poor';
+          }
+          _hasGpsFix = true;
+        } else {
+          _gpsStatus = 'Invalid GPS accuracy value';
+          _hasGpsFix = false;
+        }
+      });
 
       _showSnackBar(
           'Coordinates updated: ${position.latitude}, ${position.longitude}',
           Colors.green);
+    } catch (e) {
+      _gpsStatus = 'Error: Unable to get GPS fix.';
+      _showSnackBar(_gpsStatus, Colors.red);
     } finally {
       setState(() {
         isLoading = false;
@@ -122,36 +159,17 @@ class _GeoLocationState extends State<GeoLocation> {
     }
   }
 
-  _getLastLocation() async {
+  Future<void> _getLastLocation() async {
     setState(() {
       isLoading = true;
+      _gpsStatus = 'Fetching last known location...';
     });
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showSnackBar('Location services are disabled.', Colors.red);
-        return;
-      }
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          _showSnackBar('Location permissions are denied', Colors.red);
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        _showSnackBar(
-            'Location permissions are permanently denied, we cannot request permissions.',
-            Colors.red);
-        return;
-      }
-
       Position? position = await Geolocator.getLastKnownPosition();
       if (position == null) {
-        _showSnackBar('No location data available.', Colors.red);
+        _gpsStatus = 'No last known location available.';
+        _showSnackBar(_gpsStatus, Colors.red);
         return;
       }
 
@@ -159,6 +177,11 @@ class _GeoLocationState extends State<GeoLocation> {
       _longController.text = '${position.longitude}';
       _altitudeController.text = '${position.altitude}';
       convertToUtm();
+
+      setState(() {
+        _gpsStatus = 'Last known location retrieved.';
+        _hasGpsFix = true;
+      });
 
       _showSnackBar(
           'Last known coordinates: ${position.latitude}, ${position.longitude}',
@@ -170,16 +193,17 @@ class _GeoLocationState extends State<GeoLocation> {
     }
   }
 
-  _clearAll() async {
-    _utmEastingController.text = '';
-    _utmNorthingController.text = '';
-    _latController.text = '';
-    _longController.text = '';
-    _zoneController.text = '';
-    _altitudeController.text = '';
+  void _clearAll() {
+    _utmEastingController.clear();
+    _utmNorthingController.clear();
+    _latController.clear();
+    _longController.clear();
+    _zoneController.clear();
+    _altitudeController.clear();
+    _showSnackBar('Successfully cleared', Colors.green);
   }
 
-  _copyUTM() async {
+  void _copyUTM() {
     if (_utmEastingController.text.isEmpty ||
         _utmNorthingController.text.isEmpty) {
       _showSnackBar('Coordinates are empty, cannot copy.', Colors.red);
@@ -192,182 +216,179 @@ class _GeoLocationState extends State<GeoLocation> {
     _showSnackBar('UTM coordinates copied to clipboard.', Colors.green);
   }
 
+  Widget _buildSection({required String title, required Widget child}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    bool readOnly = false,
+    IconData? icon,
+  }) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        suffixIcon: icon != null ? Icon(icon) : null,
+      ),
+    );
+  }
+
+  Widget _buildGpsStatusIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(
+            _hasGpsFix ? Icons.gps_fixed : Icons.gps_not_fixed,
+            color: _hasGpsFix ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _gpsStatus,
+              style: TextStyle(
+                fontSize: 16,
+                color: _hasGpsFix ? Colors.green : Colors.red,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    double pageWidth = MediaQuery.sizeOf(context).width;
-    double txtFieldHeight = pageWidth * 0.2;
-
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: MediaQuery.sizeOf(context).height * 0.2,
-        title: const Text(
-          'User location ',
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: const Text('User Location'),
         centerTitle: true,
       ),
       bottomSheet: const Text('By Karyeija Felex'),
       body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            children: [
-              if (isLoading)
-                const LinearProgressIndicator(), // Show progress bar if loading
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SafeArea(
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Latitude and Longitude Input Fields
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: MediaQuery.sizeOf(context).width / 2.5,
-                                  // width: txtFieldWidth,
-                                  height: txtFieldHeight,
-                                  child: TextField(
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(),
-                                    controller: _latController,
-                                    decoration: const InputDecoration(
-                                      border: OutlineInputBorder(),
-                                      labelText: 'Latitude',
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: pageWidth * 0.05),
-                                SizedBox(
-                                  width: MediaQuery.sizeOf(context).width / 2.5,
-                                  height: txtFieldHeight,
-                                  child: TextField(
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(),
-                                    controller: _longController,
-                                    decoration: const InputDecoration(
-                                      border: OutlineInputBorder(),
-                                      labelText: 'Longitude',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // UTM Output Fields
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                // width: txtFieldWidth,
-                                height: txtFieldHeight * 0.9,
-                                width: pageWidth / 2.5,
-                                child: TextField(
-                                  textAlignVertical:
-                                      const TextAlignVertical(y: 0),
-                                  textAlign: TextAlign.center,
-                                  readOnly: true,
-                                  controller: _zoneController,
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    prefixText: 'zone:',
-                                    hintText: 'zone:',
-                                  ),
-                                ),
-                              ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    // width:
-                                    width: pageWidth / 2.5,
-                                    height: txtFieldHeight,
-                                    child: TextField(
-                                      readOnly: true,
-                                      controller: _utmEastingController,
-                                      decoration: const InputDecoration(
-                                        border: OutlineInputBorder(),
-                                        labelText: 'UTM Easting',
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: pageWidth * 0.03),
-                                  SizedBox(
-                                    width: pageWidth / 2.5,
-                                    height: txtFieldHeight,
-                                    child: TextField(
-                                      readOnly: true,
-                                      controller: _utmNorthingController,
-                                      decoration: const InputDecoration(
-                                        border: OutlineInputBorder(),
-                                        labelText: 'UTM Northing',
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: _copyUTM,
-                                    icon: const Icon(Icons.copy),
-                                  )
-                                ],
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                              height: MediaQuery.sizeOf(context).height * 0.1),
-                          SizedBox(width: pageWidth * 0.03),
-                          SizedBox(
-                            width: pageWidth / 2.5,
-                            height: txtFieldHeight,
-                            child: TextField(
-                              readOnly: true,
-                              controller: _altitudeController,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Elevation',
-                              ),
-                            ),
-                          ),
-                          // Location Buttons
-                          ElevatedButton(
-                            onPressed: _getCurrentLocation,
-                            child: const Text(
-                              'Get Current Location',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: _getLastLocation,
-                            child: const Text(
-                              'Get Last Location',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: _clearAll,
-                            child: const Text(
-                              'Clear All',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red),
-                            ),
-                          ),
-                        ],
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            if (isLoading) const Center(child: CircularProgressIndicator()),
+            _buildGpsStatusIndicator(),
+            const Divider(height: 30),
+            _buildSection(
+                title: 'Geographic coordinates',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildInputField(
+                        label: 'Latitude',
+                        controller: _latController,
                       ),
                     ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildInputField(
+                        label: 'Longitude',
+                        controller: _longController,
+                      ),
+                    ),
+                  ],
+                )),
+            const SizedBox(height: 20),
+            _buildSection(
+                title: 'UTM coordinates',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildInputField(
+                        label: 'UTM Easting',
+                        controller: _utmEastingController,
+                        readOnly: true,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildInputField(
+                        label: 'UTM Northing',
+                        controller: _utmNorthingController,
+                        readOnly: true,
+                      ),
+                    ),
+                  ],
+                )),
+            const SizedBox(height: 20),
+            _buildInputField(
+              label: 'Zone',
+              controller: _zoneController,
+              readOnly: true,
+              icon: Icons.map,
+            ),
+            const SizedBox(height: 20),
+            _buildInputField(
+              label: 'Elevation',
+              controller: _altitudeController,
+              readOnly: true,
+              icon: Icons.terrain,
+            ),
+            const SizedBox(height: 20),
+            _buildSection(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: _getCurrentLocation,
+                    child: const Text('Get Current Location'),
                   ),
-                ),
+                  ElevatedButton(
+                    onPressed: _getLastLocation,
+                    child: const Text('Get Last Location'),
+                  ),
+                ],
               ),
-            ],
-          ),
+              title: 'Action',
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: _clearAll,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
+                  child: const Text('Clear All'),
+                ),
+                ElevatedButton(
+                  onPressed: _copyUTM,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                  child: const Text('Copy UTM'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
