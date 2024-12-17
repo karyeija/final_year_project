@@ -19,7 +19,7 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
-  bool _isDarkMode = false;
+
   // Default and current points
   final List<List<double>> defaultPoints = [
     [100, 85],
@@ -381,22 +381,7 @@ class HomeState extends State<Home> {
               ),
               child: Text('Settings'),
             ),
-            ListTile(
-              title: Text('Dark Mode'),
-              trailing: Switch(
-                value: _isDarkMode,
-                onChanged: (value) {
-                  setState(() {
-                    _isDarkMode = value;
-                    if (_isDarkMode) {
-                      MyApp.of(context).setTheme(ThemeMode.dark);
-                    } else {
-                      MyApp.of(context).setTheme(ThemeMode.light);
-                    }
-                  });
-                },
-              ),
-            ),
+            
             ListTile(
               title: const Text('User Guide'),
               leading: Icon(Icons.help_outline),
