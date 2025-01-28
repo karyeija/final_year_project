@@ -26,7 +26,8 @@ class TableScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CSV Data App',
+      debugShowCheckedModeBanner: false,
+      title: 'CSV Data page',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const CsvTableScreen(),
     );
@@ -45,7 +46,7 @@ class _CsvTableScreenState extends State<CsvTableScreen> {
   List<Map<String, dynamic>> csvData = [];
   List<Map<String, dynamic>> filteredData = [];
   String filterText = '';
-  double? inputElevation;
+  // double? inputElevation;
   Timer? _debounce;
 
   @override
@@ -80,153 +81,112 @@ class _CsvTableScreenState extends State<CsvTableScreen> {
     });
   }
 
-  void _onElevationChanged(String value) {
-    setState(() {
-      inputElevation = double.tryParse(value);
-      _sortDataByElevationDifference();
-    });
-  }
-
-  Color _getElevationColor(double recordElevation) {
-    if (inputElevation == null) return Colors.transparent;
-
-    double difference = (recordElevation - inputElevation!).abs();
-    if (difference >= 200) return Colors.red;
-    if (difference >= 100) return Colors.orange;
-    return Colors.green;
-  }
-
-  void _sortDataByElevationDifference() {
-    if (inputElevation != null) {
-      filteredData.sort((a, b) {
-        double elevationA = a['ELEVATION'];
-        double elevationB = b['ELEVATION'];
-
-        int colorValueA = _getColorPriority(_getElevationColor(elevationA));
-        int colorValueB = _getColorPriority(_getElevationColor(elevationB));
-
-        return colorValueA.compareTo(colorValueB);
-      });
-    }
-  }
-
-  int _getColorPriority(Color color) {
-    if (color == Colors.green) return 1;
-    if (color == Colors.orange) return 2;
-    return 3;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Control Stations Table',
-          style: TextStyle(color: Colors.green),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Control Stations Table',
+            style: TextStyle(color: Colors.green),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Increase the height and wrap TextFields in Expanded
-            Padding(
-              padding: const EdgeInsets.all(
-                  8.0), // Add padding around the input fields
-              child: Row(
-                children: [
-                  // Filter by Name TextField
-                  Expanded(
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Filter by Name',
-                        border: OutlineInputBorder(),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Increase the height and wrap TextFields in Expanded
+              Padding(
+                padding: const EdgeInsets.all(
+                    8.0), // Add padding around the input fields
+                child: Row(
+                  children: [
+                    // Filter by Name TextField
+                    Expanded(
+                      child: TextField(
+                        decoration: const InputDecoration(
+                          // prefix: Icon(Icons.search),
+                          suffixIcon: Icon(Icons.search),
+                          // icon: Icon(Icons.search),
+                          labelText: 'Filter by Name',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged:
+                            _filterData, // Call the filter function on input change
                       ),
-                      onChanged:
-                          _filterData, // Call the filter function on input change
                     ),
-                  ),
-                  const SizedBox(
-                      width: 8), // Add spacing between the two fields
-                  // Enter Elevation TextField
-                  Expanded(
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        labelText: 'Enter Elevation to Compare',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      onChanged:
-                          _onElevationChanged, // Update inputElevation on change
-                    ),
-                  ),
-                ],
+                    const SizedBox(
+                        width: 8), // Add spacing between the two fields
+                  ],
+                ),
               ),
-            ),
-            // List of filtered data
-            SingleChildScrollView(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height *
-                    0.6, // Adjust height as needed
-                child: filteredData.isEmpty
-                    ? const Center(
-                        child:
-                            CircularProgressIndicator()) // Show loading spinner
-                    : ListView.builder(
-                        itemCount: filteredData.length,
-                        itemBuilder: (context, index) {
-                          Map<String, dynamic> row = filteredData[index];
+              // List of filtered data
+              SingleChildScrollView(
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height *
+                      0.6, // Adjust height as needed
+                  child: filteredData.isEmpty
+                      ? const Center(
+                          child:
+                              CircularProgressIndicator()) // Show loading spinner
+                      : ListView.builder(
+                          itemCount: filteredData.length,
+                          itemBuilder: (context, index) {
+                            Map<String, dynamic> row = filteredData[index];
 
-                          // Replace ListTile with the Container-based layout
-                          return Container(
-                            margin: const EdgeInsets.all(
-                                2.0), // Add some spacing around each row
-                            padding: const EdgeInsets.all(
-                                5.0), // Padding inside each row
-                            decoration: BoxDecoration(
-                              color: _getElevationColor(row[
-                                  'ELEVATION']), // Set background color based on elevation
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // The text information on the left
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Name: ${row['NAME']}'),
-                                      Text(
-                                          'N: ${row['N']}, E: ${row['E']}, Elevation: ${row['ELEVATION']}'),
-                                    ],
+                            // Replace ListTile with the Container-based layout
+                            return Container(
+                              margin: const EdgeInsets.all(
+                                  2.0), // Add some spacing around each row
+                              padding: const EdgeInsets.all(
+                                  5.0), // Padding inside each row
+                              // decoration: BoxDecoration(
+                              //   color: _getElevationColor(row[
+                              //       'ELEVATION']), // Set background color based on elevation
+                              //   borderRadius: BorderRadius.circular(8.0),
+                              // ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // The text information on the left
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Name: ${row['NAME']}'),
+                                        Text(
+                                            'N: ${row['N']}, E: ${row['E']}, Elevation: ${row['ELEVATION']}'),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                // The copy icon on the right
-                                IconButton(
-                                  icon: const Icon(Icons.copy),
-                                  onPressed: () {
-                                    // Copy E and N in reverse order
-                                    final reversedValues =
-                                        '${row['E']}, ${row['N']}';
-                                    Clipboard.setData(
-                                        ClipboardData(text: reversedValues));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content:
-                                              Text('Copied: $reversedValues')),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
+                                  // The copy icon on the right
+                                  IconButton(
+                                    icon: const Icon(Icons.copy),
+                                    onPressed: () {
+                                      // Copy E and N in reverse order
+                                      final reversedValues =
+                                          '${row['E']}, ${row['N']}';
+                                      Clipboard.setData(
+                                          ClipboardData(text: reversedValues));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Copied: $reversedValues')),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

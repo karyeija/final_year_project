@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:gnsspro/geometry.dart';
 import 'package:flutter/services.dart';
-import 'package:test/geometry.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,8 +20,6 @@ class MyApp extends StatelessWidget {
       home: const GeoLocation(),
     );
   }
-
-  static of(BuildContext context) {}
 }
 
 class GeoLocation extends StatefulWidget {
@@ -44,6 +42,11 @@ class _GeoLocationState extends State<GeoLocation> {
   bool isLoading = false;
   bool _hasGpsFix = false;
   String _gpsStatus = 'Waiting for GPS fix...';
+
+  get horizontalLine =>
+      SizedBox(height: MediaQuery.of(context).size.width * 0.01);
+  get verticalLine =>
+      SizedBox(height: MediaQuery.of(context).size.height * 0.01);
 
   Future<void> convertToUtm() async {
     double? latitude = double.tryParse(_latController.text);
@@ -70,7 +73,7 @@ class _GeoLocationState extends State<GeoLocation> {
               color == Colors.green ? Icons.check_circle : Icons.error,
               color: Colors.white,
             ),
-            const SizedBox(width: 8),
+            verticalLine,
             Expanded(child: Text(message)),
           ],
         ),
@@ -86,12 +89,41 @@ class _GeoLocationState extends State<GeoLocation> {
       _gpsStatus = 'Waiting for GPS fix...';
       _hasGpsFix = false;
     });
+    void showLocationSettingsDialog() {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Location Services Disabled'),
+            content: const Text('Please enable location services to proceed.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Geolocator.openLocationSettings(); // Open location settings.
+                },
+                child: const Text('Open Settings'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         _gpsStatus = 'Location services are disabled.';
         _showSnackBar(_gpsStatus, Colors.red);
+
+        // Prompt user to enable location services
+        showLocationSettingsDialog();
         return;
       }
 
@@ -123,69 +155,22 @@ class _GeoLocationState extends State<GeoLocation> {
           (position.altitude + 12.6400000000001).toStringAsFixed(0);
       _accuracyController.text = '${position.accuracy.toStringAsFixed(2)} m';
 
-      convertToUtm();
+      // Classify the GPS fix based on accuracy
+      final accuracy = position.accuracy;
+
       setState(() {
-        // Update the accuracy controller with the new position accuracy
-        _accuracyController.text = '${position.accuracy.toStringAsFixed(2)} m';
-
-        // Parse the updated accuracy for further processing
-        final accuracy = double.tryParse(position.accuracy.toStringAsFixed(2));
-
-        if (accuracy != null) {
-          if (accuracy < 5) {
-            _gpsStatus =
-                'GPS Fix acquired! at ${_accuracyController.text} good';
-          } else {
-            _gpsStatus =
-                'GPS Fix acquired! at ${_accuracyController.text}, poor';
-          }
-          _hasGpsFix = true;
-        } else {
-          _gpsStatus = 'Invalid GPS accuracy value';
-          _hasGpsFix = false;
-        }
+        // if (accuracy < 1) {
+        _gpsStatus = 'RTK Fixed, error= ${accuracy.toStringAsFixed(2)} m';
+        _hasGpsFix = true;
       });
 
+      convertToUtm();
       _showSnackBar(
           'Coordinates updated: ${position.latitude}, ${position.longitude}',
           Colors.green);
     } catch (e) {
       _gpsStatus = 'Error: Unable to get GPS fix.';
       _showSnackBar(_gpsStatus, Colors.red);
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _getLastLocation() async {
-    setState(() {
-      isLoading = true;
-      _gpsStatus = 'Fetching last known location...';
-    });
-
-    try {
-      Position? position = await Geolocator.getLastKnownPosition();
-      if (position == null) {
-        _gpsStatus = 'No last known location available.';
-        _showSnackBar(_gpsStatus, Colors.red);
-        return;
-      }
-
-      _latController.text = '${position.latitude}';
-      _longController.text = '${position.longitude}';
-      _altitudeController.text = '${position.altitude}';
-      convertToUtm();
-
-      setState(() {
-        _gpsStatus = 'Last known location retrieved.';
-        _hasGpsFix = true;
-      });
-
-      _showSnackBar(
-          'Last known coordinates: ${position.latitude}, ${position.longitude}',
-          Colors.green);
     } finally {
       setState(() {
         isLoading = false;
@@ -218,7 +203,11 @@ class _GeoLocationState extends State<GeoLocation> {
 
   Widget _buildSection({required String title, required Widget child}) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(2.0),
+      ),
+      // color: Color.fromARGB(12, 24, 65, 76),
+      margin: const EdgeInsets.all(16),
       elevation: 3,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -232,7 +221,7 @@ class _GeoLocationState extends State<GeoLocation> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            horizontalLine,
             child,
           ],
         ),
@@ -243,12 +232,15 @@ class _GeoLocationState extends State<GeoLocation> {
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
-    bool readOnly = false,
+    bool readOnly = true,
+    bool showCursor = false,
     IconData? icon,
   }) {
     return TextField(
       controller: controller,
       readOnly: readOnly,
+      enabled: showCursor,
+      showCursor: showCursor,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
@@ -258,21 +250,27 @@ class _GeoLocationState extends State<GeoLocation> {
   }
 
   Widget _buildGpsStatusIndicator() {
+    final accuracy = double.tryParse(_accuracyController.text.split(' ')[0]);
+
+    // Set color based on accuracy
+    Color statusColor =
+        _hasGpsFix && (accuracy != null) ? Colors.green : Colors.red;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Icon(
             _hasGpsFix ? Icons.gps_fixed : Icons.gps_not_fixed,
-            color: _hasGpsFix ? Colors.green : Colors.red,
+            color: statusColor,
           ),
-          const SizedBox(width: 8),
+          verticalLine,
           Expanded(
             child: Text(
               _gpsStatus,
               style: TextStyle(
                 fontSize: 16,
-                color: _hasGpsFix ? Colors.green : Colors.red,
+                color: statusColor,
               ),
             ),
           ),
@@ -289,14 +287,15 @@ class _GeoLocationState extends State<GeoLocation> {
         centerTitle: true,
       ),
       bottomSheet: const Text('By Karyeija Felex'),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            if (isLoading) const Center(child: CircularProgressIndicator()),
-            _buildGpsStatusIndicator(),
-            const Divider(height: 30),
-            _buildSection(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            children: [
+              if (isLoading) const Center(child: CircularProgressIndicator()),
+              _buildGpsStatusIndicator(),
+              horizontalLine,
+              _buildSection(
                 title: 'Geographic coordinates',
                 child: Row(
                   children: [
@@ -306,7 +305,7 @@ class _GeoLocationState extends State<GeoLocation> {
                         controller: _latController,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _buildInputField(
                         label: 'Longitude',
@@ -314,9 +313,10 @@ class _GeoLocationState extends State<GeoLocation> {
                       ),
                     ),
                   ],
-                )),
-            const SizedBox(height: 20),
-            _buildSection(
+                ),
+              ),
+              horizontalLine,
+              _buildSection(
                 title: 'UTM coordinates',
                 child: Row(
                   children: [
@@ -327,7 +327,7 @@ class _GeoLocationState extends State<GeoLocation> {
                         readOnly: true,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _buildInputField(
                         label: 'UTM Northing',
@@ -336,59 +336,50 @@ class _GeoLocationState extends State<GeoLocation> {
                       ),
                     ),
                   ],
-                )),
-            const SizedBox(height: 20),
-            _buildInputField(
-              label: 'Zone',
-              controller: _zoneController,
-              readOnly: true,
-              icon: Icons.map,
-            ),
-            const SizedBox(height: 20),
-            _buildInputField(
-              label: 'Elevation',
-              controller: _altitudeController,
-              readOnly: true,
-              icon: Icons.terrain,
-            ),
-            const SizedBox(height: 20),
-            _buildSection(
-              child: Row(
+                ),
+              ),
+              horizontalLine,
+              _buildInputField(
+                label: 'Zone',
+                controller: _zoneController,
+                readOnly: true,
+                icon: Icons.map,
+              ),
+              horizontalLine,
+              FittedBox(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _getCurrentLocation,
+                        child: const Text('Get Current Location'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              horizontalLine,
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton(
-                    onPressed: _getCurrentLocation,
-                    child: const Text('Get Current Location'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                    onPressed: _clearAll,
+                    child: const Text('Clear'),
                   ),
                   ElevatedButton(
-                    onPressed: _getLastLocation,
-                    child: const Text('Get Last Location'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    onPressed: _copyUTM,
+                    child: const Text('Copy UTM'),
                   ),
                 ],
               ),
-              title: 'Action',
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: _clearAll,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
-                  child: const Text('Clear All'),
-                ),
-                ElevatedButton(
-                  onPressed: _copyUTM,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  child: const Text('Copy UTM'),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

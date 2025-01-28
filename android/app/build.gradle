@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.felexk.resection"
+        applicationId = "com.felonetsolutions.gnsspro"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -35,6 +35,44 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
+        }
+        // add the code from below line
+        // applicationVariants.all{
+        //     // this method is use to rename your all apk weather 
+        //     // it may be signed or unsigned(debug apk)
+        //     variant ->
+        //         variant.outputs.each{
+        //             // on below line we are setting 
+        //             // a name to our apk as GNSS pro.apk
+        //             output->
+        //                 // on below line we are adding version name to 
+        //                 // our .apk file along with the app name
+        //                 def name = "GNSS pro(${variant.versionName}).apk"
+        //                 // on below line we are setting the 
+        //                 // outputFile Name to our apk file
+        //                 output.outputFileName = name
+        //         }
+        // }
+        // add the code from below line.
+        applicationVariants.all{
+            // this method is use to rename your release apk only
+            variant ->
+                variant.outputs.each{
+                    // on below line we are setting a name to our apk
+                    output->
+                        // on below line we are specifying our app name.
+                        project.ext { appName = 'GNSS pro' }
+                        // on below line we are adding the formatted date to our apk file name.
+                        def formattedDate = new Date().format('yyyy-MM-dd-HH-mm-ss')
+                        // on below line we are creating a new name for our apk.
+                        def newName = output.outputFile.name
+                        // on below line we are replacing our previous name with our app name.
+                        newName = newName.replace("app-", "$project.ext.appName-")
+                        // on below line we are replacing -release with our formatted date.
+                        newName = newName.replace("-release", "-release-" + formattedDate)
+                        // at last we are setting our apk name to it.
+                        output.outputFileName  = newName
+                }
         }
     }
 }

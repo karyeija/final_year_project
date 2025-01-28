@@ -1,38 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:test/home.dart';
+import 'package:gnsspro/screens/welcome.dart'; // Import welcome screen
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  _MyAppState createState() => _MyAppState();
-
-  static _MyAppState? of(BuildContext context) =>
-      context.findAncestorStateOfType<_MyAppState>();
-}
-
-class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = ThemeMode.system;
-
-  void setTheme(ThemeMode themeMode) {
-    setState(() {
-      _themeMode = themeMode;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Resection App',
+      debugShowCheckedModeBanner: false,
+      title: 'GNSS pro',
       theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      themeMode: _themeMode,
-      home: Home(),
+      home: WelcomeScreen(), // Start with WelcomeScreen
     );
   }
 }

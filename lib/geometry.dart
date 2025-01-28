@@ -1,3 +1,4 @@
+// import 'dart:ffi';
 import 'dart:math';
 import 'package:location/location.dart';
 import 'package:utm/utm.dart';
@@ -19,13 +20,14 @@ double forwardBearing(List<double> pointA, List<double> pointB) {
   return isLowest;
 }
 
-double calcDistance(List<double> firstPoint, List<double> secondPoint) {
+double calcDistance(List<double> firstPoint, List<double> secondPoint,
+    {int precision = 2}) {
   // ΔN is change in latitude, ΔE is change in longitudes
   double deltaN = secondPoint[1] - firstPoint[1];
   double deltaE = secondPoint[0] - firstPoint[0];
   double dist12 = sqrt(pow(deltaE, 2) + pow(deltaN, 2));
 
-  return dist12;
+  return double.parse(dist12.toStringAsFixed(precision));
 }
 
 // Back Bearing
@@ -36,13 +38,6 @@ double backBearing(List<double> pointA, List<double> pointB) {
   double bearing =
       (atan2(deltaE, deltaN) * 180 / pi) % 360; // atan2 in Dart returns radians
   return bearing;
-}
-
-// Interior Angle
-double interiorAngle(
-    List<double> pointA, List<double> pointB, List<double> pointC) {
-  double angle1 = backBearing(pointA, pointB) - forwardBearing(pointB, pointC);
-  return angle1.abs();
 }
 
 // DMS (Decimal Degrees to DMS Format)
@@ -59,8 +54,8 @@ String dms(double angle) {
   String myMin = (minute < 10) ? "0$minutes" : minute.toString();
 
   double floatSec = (floatMin - minute) * 60;
-  int secon = floatSec.truncate();
-  String seconds = (secon < 10) ? "0$secon" : secon.toString();
+  int sec = floatSec.truncate();
+  String seconds = (sec < 10) ? "0$sec" : sec.toString();
 
   return "$degrees\u00b0 $myMin\u0022 $seconds\u0022";
 }
@@ -182,8 +177,10 @@ Map<String, dynamic> convertLatLngToUtm(
   final utm = UTM.fromLatLon(
       lat: latitude, lon: longitude, type: GeodeticSystemType.wgs84);
 
-  var utmEasting = double.parse(utm.easting.toStringAsFixed(precision));
-  var utmNorthing = double.parse(utm.northing.toStringAsFixed(precision));
+  var utmEasting =
+      double.parse((utm.easting + -84.3244).toStringAsFixed(precision));
+  var utmNorthing =
+      double.parse((utm.northing + 294.3789).toStringAsFixed(precision));
 
   return {
     'zone': utm.zone,
@@ -205,8 +202,8 @@ Future<double?> getElevation() async {
 /// Checks if point P(X, Y) is inside the triangle formed by vertices A, B, and C.
 ///
 /// Args:
-///   X_testValue: X-coordinate of point P.
-///   Y_testValue: Y-coordinate of point P.
+///   xTestValue: X-coordinate of point P.
+///   yTestValue: Y-coordinate of point P.
 ///   ax: X-coordinate of vertex A.
 ///   ay: Y-coordinate of vertex A.
 ///   bx: X-coordinate of vertex B.
@@ -217,8 +214,8 @@ Future<double?> getElevation() async {
 /// Returns:
 ///   True if P is inside the triangle ABC, false otherwise.
 bool isPointInTriangle({
-  required double X_testValue,
-  required double Y_testValue,
+  required double xTestValue,
+  required double yTestValue,
   required double ax,
   required double ay,
   required double bx,
@@ -236,16 +233,26 @@ bool isPointInTriangle({
   double areaABC = triangleArea(ax, ay, bx, by, cx, cy);
 
   // Areas of the sub-triangles PAB, PBC, and PCA
-  double areaPAB = triangleArea(X_testValue, Y_testValue, ax, ay, bx, by);
-  double areaPBC = triangleArea(X_testValue, Y_testValue, bx, by, cx, cy);
-  double areaPCA = triangleArea(X_testValue, Y_testValue, cx, cy, ax, ay);
+  double areaPAB = triangleArea(xTestValue, yTestValue, ax, ay, bx, by);
+  double areaPBC = triangleArea(xTestValue, yTestValue, bx, by, cx, cy);
+  double areaPCA = triangleArea(xTestValue, yTestValue, cx, cy, ax, ay);
 
   // Check if the sum of the areas of PAB, PBC, and PCA is equal to areaABC
   return (areaPAB + areaPBC + areaPCA) == areaABC;
 }
 
-void main() {
-  double test =
-      ((forwardBearing(pts[3], pts[0]) - forwardBearing(pts[3], pts[1])) % 360);
-  print(test);
+// Interior Angle Calculation
+double calculateAngle(
+    List<double> point1, List<double> point2, List<double> point3,
+    {int precision = 6}) {
+  // Calculate distances between points
+  double ab = calcDistance(point1, point2);
+  double bc = calcDistance(point2, point3);
+  double ac = calcDistance(point1, point3);
+  // Calculate the angle in radians and then convert to degrees
+  double angleRadians = acos((ab * ab + bc * bc - ac * ac) / (2 * ab * bc));
+  double angleDegrees = angleRadians * (180 / pi);
+
+  // Round to the specified precision
+  return double.parse(angleDegrees.toStringAsFixed(precision));
 }
